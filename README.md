@@ -1,60 +1,73 @@
-# Biblioteca en Solana
+# 🖥️ PC de Pokémon - Smart Contract en Solana (GameFi)
 
-![banner](./images/banner-biblioteca.jpg)
+## 📖 Descripción del Proyecto
+Este proyecto es un Smart Contract desarrollado en **Rust** utilizando el framework **Anchor** para la blockchain de **Solana**. 
 
-CRUD básico de un Solana Program desarrollado con Rust y Anchor desde el Solana Playground. 
+Simula el clásico "Sistema de Almacenamiento de Pokémon" (PC de Bill) de los videojuegos, adaptado a la arquitectura Web3. Permite a los usuarios (Entrenadores) inicializar múltiples cajas de almacenamiento, capturar/depositar Pokémon, visualizar su inventario y liberar espacio de forma segura y descentralizada.
 
-Puedes comenzar dándole Fork a este repositorio (abajo te explicamos como 👇), **hemos preparado un entorno de codespaces listo para que no tengas que instalar nada**, solo déjate llevar por la fluidez de los ejercicios y temas desarrollados especialmente para ti. 
+---
 
-Asegúrate de clonar este repositorio a tu cuenta usando el botón **`Fork`**.
+## ✨ Características Principales
+* **Arquitectura Multi-Caja (PDAs Dinámicas):** Cada entrenador puede tener hasta 32 cajas independientes. Cada caja es una *Program Derived Address* (PDA) única, generada a partir de la billetera del usuario y el número de caja.
+* **Optimización de Memoria:** Uso de `Enums` para atributos de lista cerrada (Naturaleza y Sexo), reduciendo drásticamente los costos de renta en la blockchain en comparación con el uso de `Strings`.
+* **Identificadores Únicos (IDs):** Sistema auto-incremental por caja para asignar un ID único a cada Pokémon, evitando conflictos al editar o borrar "clones" (ej. dos Bulbasaur del mismo nivel).
+* **Tracking del Entrenador Original (OT):** Inmutabilidad del registro de captura, guardando la `Pubkey` y el nombre de quien depositó al Pokémon por primera vez.
+* **Manejo del Tiempo Universal:** Registro de fecha de captura utilizando *Unix Timestamps* para compatibilidad global.
 
-![fork](./images/fork.png)
+---
 
-## Importando el proyecto 
+## 🛠️ Cómo Usar y Probar el Proyecto (Solana Playground)
 
-Ya con el repositorio en tu cuenta lo siguiente que debes hacer copiar el `enlace de tu repositorio`, lo que se puede hacer directamente desdel navegador:
+Este proyecto está optimizado para ser probado en [Solana Playground (beta.solpg.io)](https://beta.solpg.io/).
 
-![repo](./images/repo.png)
-Posteriormente, lo uniremos con el siguiente enlace en nuestro navegador de preferencia:
+### Paso 1: Preparación
+1. Pega el código fuente en el archivo `lib.rs` dentro de la carpeta `src`.
+2. Ve a la pestaña **Build & Deploy** (icono de herramientas a la izquierda).
+3. Haz clic en **Build**.
+4. Copia el **Program ID** generado en "Program Credentials" y pégalo en la línea `declare_id!("...");` al inicio de tu código.
+5. Vuelve a hacer **Build** y luego haz clic en **Deploy**.
 
-```url
-https://beta.solpg.io/
-```
+### Paso 2: Interacción (Pestaña "Test")
+Para probar las funciones correctamente, debes configurar los candados criptográficos (Seeds) en la interfaz de pruebas.
 
-Lo que nos dará algo parecido a:
+#### A. Inicializar una Caja (`inicializar_pc`)
+1. Expande la función y llena los argumentos (`numero_caja` ej. `1`, y `nombre_entrenador`).
+2. En la sección **Accounts -> pcCaja**, despliega el menú y selecciona **Seeds**.
+3. Configura exactamente **3 Semillas (Seeds)**:
+   * **Seed 1:** `String` ➔ Valor: `pc-caja`
+   * **Seed 2:** `Pubkey` ➔ Valor: `owner` (o Current Wallet)
+   * **Seed 3:** `u8` ➔ Valor: `1` *(Debe coincidir con el numero_caja de los argumentos).*
+4. Haz clic en **Test**.
 
-![url](./images/url.png)
+#### B. Depositar Pokémon (`depositar_pokemon`)
+1. Llena los datos estadísticos del Pokémon. **Asegúrate de que el `numero_caja` sea el mismo que inicializaste.**
+2. En la sección **Accounts**, repite la configuración exacta de las 3 Semillas (Seeds) detallada en el paso anterior.
+3. Haz clic en **Test**.
 
-Al pulsar enter seremos enviados al `Solana Playground` con nuestro proyecto abierto:
+#### C. Ver Caja (`ver_pc`)
+1. Pon el `numero_caja` que deseas consultar.
+2. Configura las 3 Semillas apuntando a ese número de caja.
+3. Haz clic en **Test**. 
+4. Revisa la consola de Playground (abajo) para ver el reporte detallado del contenido de la caja.
 
-![pg](./images/pg.png)
+---
 
-Para guardarlo solo damos clic en el boton `import` y asignamos un nombre:
+## 📚 Funciones (CRUD)
 
-![import](./images/import.png)
+| Función | Descripción |
+| :--- | :--- |
+| `inicializar_pc` | **CREATE**: Reserva el espacio en la blockchain para una Caja específica (1-32) y establece al firmante como dueño. |
+| `depositar_pokemon`| **INSERT**: Genera un ID único y guarda un nuevo Pokémon en el vector de la caja correspondiente. |
+| `ver_pc` | **READ**: Imprime en los logs de la consola el perfil completo de todos los Pokémon almacenados en una caja. |
+| `alternar_shiny` | **UPDATE**: Cambia el estado de un Pokémon (Normal ↔ Shiny) buscando por su ID único. |
+| `liberar_pokemon` | **DELETE**: Elimina permanentemente a un Pokémon del arreglo de la caja usando su ID, liberando espacio. |
 
-## Preparacion del entorno
+---
 
-Primero conectaremos el entorno con la devnet, lo que tambien procederá a la creación de una wallet. Para eso daremos clic en donde dice **Not Conected**:
+## 🔒 Seguridad y Validaciones
+* **Dueño Exclusivo:** La directiva `has_one = owner` asegura que nadie pueda modificar una caja si no firmó la transacción con la billetera creadora.
+* **Validación de Cajas:** Restricciones lógicas (`constraint = numero_caja >= 1 && <= 32`) evitan la creación de cuentas "basura" fuera de los límites del juego.
+* **Límites de Espacio:** Cada caja admite exactamente 30 Pokémon.
 
-![playground1](./images/playground1.png)
-
-Saldrá la siguiente ventana donde daremos en el botón **Continue**:
-
-![wallet](./images/wallet.png)
-
-Como resultado se mostrará la siguiente información:
-
-![status](./images/status.png)
-
-* En verde: el estado de la conexión y el entorno al que se encuentra conectado
-
-* En amarillo: la la dirección de la wallet conectada
-
-* En azul: la cantidad de tokens en la wallet
-
-> ℹ️ ¿Quieres ver el ejemplo de un "Hola Mundo" en Solana?. Da clic aquí: 👉 [Ver Ejemplo](https://github.com/WayLearnLatam/Solana-starter-kit/tree/1fc6349ba63375a3fe223d8d56911bc64765459b/build-deploy)
-
-> ℹ️ ¿Cuentas con una Wallet de [Phantom](https://phantom.com/) que deseas importar?, Da clic aquí para ver como hacerlo: 
-
-👉 [Como Importar una Wallet](https://github.com/WayLearnLatam/Solana-starter-kit/tree/1fc6349ba63375a3fe223d8d56911bc64765459b/import-key-a-playground)
+---
+*Desarrollado en Anchor para Solana Web3.*
